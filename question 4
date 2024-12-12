@@ -1,0 +1,56 @@
+## 4 Growth incidence curves  
+
+### a 
+civ <- civ %>%
+  mutate(conspc_87 = ifelse(year == "1987", conspc, NA_real_),
+         conspc_98 = ifelse(year == "1998", conspc, NA_real_),
+         conspc_08 = ifelse(year == "2008", conspc, NA_real_)
+         )
+
+percentiles <- seq(0.01, 1, by = 0.01)
+
+ewcdf_87 <- ewcdf(civ$conspc_87, weights = civ$popwgt)
+ewcdf_98 <- ewcdf(civ$conspc_98, weights = civ$popwgt)
+ewcdf_08 <- ewcdf(civ$conspc_08, weights = civ$popwgt)
+
+consperc_87 <- quantile(ewcdf_87, percentiles, na.rm = TRUE)
+consperc_98 <- quantile(ewcdf_98, percentiles, na.rm = TRUE)
+consperc_08 <- quantile(ewcdf_08, percentiles, na.rm = TRUE)
+
+#b  growth rates 
+# 11 years between 1987 and 1998
+growth98 <- ((consperc_98/consperc_87))^(1/11) -1
+# 10 years between 1998 and 2008
+growth08 <- ((consperc_08/consperc_98))^(1/10) -1
+# NaN until 10th percentile ?
+
+# c
+plotgrowth<- data.frame(
+  Percentile = percentiles * 100, 
+  Growth8798 = growth98,
+  Growth9808 = growth08
+)
+
+plotgrowth <- plotgrowth %>%
+  pivot_longer(cols = starts_with("Growth"), names_to = "Period", values_to = "GrowthRate")
+
+# Plot the Growth Incidence Curve
+ggplot(plotgrowth, aes(x = Percentile, y = GrowthRate, color = Period)) +
+  geom_line(size = 1) +
+  labs(
+    title = "Growth Incidence Curve (1987–1998 and 1998–2008)",
+    x = "Percentiles of Per Capita Consumption",
+    y = "Average Annual Growth Rate"
+  ) +
+  theme_minimal() +
+  scale_color_manual(
+    name = "Periods",
+    values = c("Growth8798" = "blue", "Growth9808" = "red"),
+    labels = c("1987–1998", "1998–2008")
+  ) +
+  theme(
+    legend.position = "bottom",
+    plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+    axis.title = element_text(size = 12)
+  )
+  
