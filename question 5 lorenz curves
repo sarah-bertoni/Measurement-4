@@ -1,0 +1,83 @@
+lorenz87 <- civ %>%
+  filter(year == 1987) %>%
+  group_by(year, north) %>%
+  arrange(conspc_87, .by_group = TRUE) %>%
+  mutate(
+    cum_pop = cumsum(popwgt) / sum(popwgt),
+    cum_consump = cumsum(conspc_87 * popwgt) / sum(conspc_87 * popwgt)) %>%
+  ungroup()
+
+lorenz98 <- civ %>%
+  filter(year == 1998) %>%
+  group_by(year, north) %>%
+  arrange(conspc_98, .by_group = TRUE) %>%
+  mutate(
+    cum_pop = cumsum(popwgt) / sum(popwgt),
+    cum_consump = cumsum(conspc_98 * popwgt) / sum(conspc_98 * popwgt)) %>%
+  ungroup()
+
+lorenz08 <- civ %>%
+  filter(year == 2008) %>%
+  group_by(year, north) %>%
+  arrange(conspc_08, .by_group = TRUE) %>%
+  mutate(
+    cum_pop = cumsum(popwgt) / sum(popwgt),
+    cum_consump = cumsum(conspc_08 * popwgt) / sum(conspc_08 * popwgt)) %>%
+  ungroup()
+
+lorenz <- bind_rows(
+  lorenz87 %>% mutate(year = 1987),
+  lorenz98 %>% mutate(year = 1998),
+  lorenz08 %>% mutate(year = 2008)) %>% 
+  select(year, north, cum_pop, cum_consump)
+
+#lorenz south region all 3 years
+lorenz_south <- lorenz %>%
+  filter(north == 0)
+
+ggplot(lorenz_south, aes(x = cum_pop, y = cum_consump, color = as.factor(year))) +
+  geom_line() +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "red") + 
+  labs(
+    title = "Lorenz Curves for the South",
+    x = "Cumulative Population Share",
+    y = "Cumulative Consumption Share",
+    color = "Year"
+  ) +
+  theme_minimal()
+
+#lorenz north region all 3 years
+lorenz_north <- lorenz %>%
+  filter(north == 1)
+
+ggplot(lorenz_north, aes(x = cum_pop, y = cum_consump, color = as.factor(year))) +
+  geom_line() +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "red") + 
+  labs(
+    title = "Lorenz Curves for the North",
+    x = "Cumulative Population Share",
+    y = "Cumulative Consumption Share",
+    color = "Year"
+  ) +
+  theme_minimal()
+
+lorenztotal <- civ %>% 
+  group_by(year) %>% 
+  arrange(conspc, .by_group = TRUE) %>%
+  mutate(
+    cum_pop = cumsum(popwgt) / sum(popwgt),
+    cum_consump = cumsum(conspc * popwgt) / sum(conspc * popwgt)) %>%
+  ungroup()
+
+#lorenz for entire country
+ggplot(lorenztotal, aes(x = cum_pop, y = cum_consump, color = as.factor(year))) +
+  geom_line() +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "red") + 
+  labs(
+    title = "Lorenz Curves for Entire Country",
+    x = "Cumulative Population Share",
+    y = "Cumulative Consumption Share",
+    color = "Year"
+  ) +
+  theme_minimal()
+
