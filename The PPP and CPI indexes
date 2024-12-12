@@ -1,0 +1,243 @@
+###The PPP and CPI indexes
+
+##I firstly created subsets of the dataset by year and region because it was easier. It is not the most elegant way for sure but it works. Actually, it is probably the least elegant way.
+
+# Laspeyres CPI
+civ1987_NORTH<-civ%>% filter(north==1)  %>% filter(year==1987)
+civ1987_NORTH<- civ1987_NORTH%>% mutate(LCPI=(mean(civ1987_NORTH$bdgshr_food)*avprice_food+mean(civ1987_NORTH$bdgshr_othr)*avprice_othr))
+civ1998_NORTH<-civ%>% filter(north==1) %>% filter(year==1998)%>% mutate(LCPI=(mean(civ1987_NORTH$bdgshr_food)*avprice_food+mean(civ1987_NORTH$bdgshr_othr)*avprice_othr))
+civ2008_NORTH<-civ%>% filter(north==1) %>% filter(year==2008)%>% mutate(LCPI=(mean(civ1987_NORTH$bdgshr_food)*avprice_food+mean(civ1987_NORTH$bdgshr_othr)*avprice_othr))
+
+
+combined_civ_NORTH <- bind_rows(civ1987_NORTH, civ1998_NORTH, civ2008_NORTH)
+
+north_civ<-combined_civ_NORTH %>% mutate(LPCI_index=LCPI*100/(mean(civ1987_NORTH$bdgshr_food)*mean(civ1987_NORTH$avprice_food)+(mean(civ1987_NORTH$bdgshr_othr)*mean(civ1987_NORTH$avprice_othr))))
+
+north_lasp<-north_civ  %>%  group_by(year) %>% summarise(CPI=mean(LPCI_index))
+result_wide_north_lasp <- north_lasp %>%
+  pivot_wider(names_from = year, values_from = CPI)%>% mutate(Region='North') %>%  
+  select(Region, everything())  
+civ1987_SOUTH<-civ%>% filter(north==0)  %>% filter(year==1987)
+civ1987_SOUTH<-civ1987_SOUTH%>% mutate(LCPI=(civ1987_SOUTH$bdgshr_food*avprice_food+mean(civ1987_SOUTH$bdgshr_othr)*avprice_othr))
+civ1998_SOUTH<-civ%>% filter(north==0)  %>% filter(year==1998)%>% mutate(LCPI=civ1987_SOUTH$bdgshr_food*avprice_food+mean(civ1987_SOUTH$bdgshr_othr)*avprice_othr)
+civ2008_SOUTH<-civ%>% filter(north==0)  %>% filter(year==2008)%>% mutate(LCPI=mean(civ1987_SOUTH$bdgshr_food)*avprice_food+mean(civ1987_SOUTH$bdgshr_othr)*avprice_othr)
+
+
+combined_civ_SOUTH <- bind_rows(civ1987_SOUTH, civ1998_SOUTH, civ2008_SOUTH)
+
+
+SOUTH_civ<-combined_civ_SOUTH %>% mutate(L_CPI=LCPI*100/(mean(civ1987_SOUTH$bdgshr_food)*mean(civ1987_SOUTH$avprice_food)+(mean(civ1987_SOUTH$bdgshr_othr)*mean(civ1987_SOUTH$avprice_othr))))
+south_lasp<- SOUTH_civ  %>%  group_by(year) %>% summarise(CPI=mean(L_CPI)) 
+result_wide_south_lasp <- south_lasp %>%
+  pivot_wider(names_from = year, values_from = CPI) %>% mutate(Region='South') %>%  
+  select(Region, everything())  
+
+
+combined_df <- bind_rows(result_wide_north_lasp, result_wide_south_lasp) 
+kable(combined_df,caption = 'Laspeyres CPI')%>%  
+  kable_paper("hover", full_width = F, html_font = "Cambria") %>% kable_styling(bootstrap_options = c("striped", "hover"),  position = "float_left")
+
+#the Paasche CPI
+
+civ1987_SOUTH<-civ1987%>% filter(north==0) %>% mutate(LCPI=bdgshr_food*avprice_food+bdgshr_othr*avprice_othr)
+civ1998_SOUTH<-civ1998%>% filter(north==0) %>%mutate(LCPI=bdgshr_food*avprice_food+bdgshr_othr*avprice_othr)
+civ2008_SOUTH<-civ2008%>% filter(north==0) %>% mutate(LCPI=bdgshr_food*avprice_food+bdgshr_othr*avprice_othr)
+combined_civ_SOUTH <- bind_rows(civ1987_SOUTH, civ1998_SOUTH, civ2008_SOUTH)
+
+SOUTH_civ<-combined_civ_SOUTH %>% mutate(PCPI=LCPI*100/(bdgshr_food*mean(civ1987_SOUTH$avprice_food)+bdgshr_othr*mean(civ1987_SOUTH$avprice_othr)))
+
+
+
+south_pas<- SOUTH_civ  %>%  group_by(year) %>% summarise(CPI=mean(PCPI)) 
+result_wide_south_pas <- south_pas %>%
+  pivot_wider(names_from = year, values_from = CPI) %>% mutate(Region='South') %>%  
+  select(Region, everything())  
+civ1987_NORTH <- civ1987 %>% filter(north == 1) %>% mutate(LCPI = bdgshr_food * avprice_food + bdgshr_othr * avprice_othr)
+civ1998_NORTH <- civ1998 %>% filter(north == 1) %>% mutate(LCPI = bdgshr_food * avprice_food + bdgshr_othr * avprice_othr)
+civ2008_NORTH <- civ2008 %>% filter(north == 1) %>% mutate(LCPI = bdgshr_food * avprice_food + bdgshr_othr * avprice_othr)
+combined_civ_NORTH <- bind_rows(civ1987_NORTH, civ1998_NORTH, civ2008_NORTH)
+
+NORTH_civ <- combined_civ_NORTH %>% mutate(PCPI = LCPI * 100 / (bdgshr_food * mean(civ1987_NORTH$avprice_food) + bdgshr_othr * mean(civ1987_NORTH$avprice_othr)))
+
+
+north_pas<-NORTH_civ  %>%  group_by(year) %>% summarise(CPI=mean(PCPI))
+result_wide_north_pas <- north_pas %>%
+  pivot_wider(names_from = year, values_from = CPI)%>% mutate(Region='North') %>%  
+  select(Region, everything())  
+
+
+combined_df <- bind_rows(result_wide_north_pas, result_wide_south_pas) 
+kable(combined_df,caption = 'Laspeyres CPI')%>%  
+  kable_paper("hover", full_width = F, html_font = "Cambria") %>% kable_styling(bootstrap_options = c("striped", "hover"),  position = "float_left")
+
+
+# the Laspeyres PPP 
+
+# For 1987, 1998, and 2008, compute Laspeyres PPP for Northern Côte d'Ivoire
+
+# Laspeyres PPP for 1987
+civ1987_NORTH <- civ1987_NORTH %>%
+  mutate(LPPP = (civ1987_SOUTH$bdgshr_food[1] * (avprice_food[1]/civ1987_SOUTH$avprice_food[1]) + civ1987_SOUTH$bdgshr_othr[1] * (avprice_othr[1] / civ1987_SOUTH$avprice_othr[1])))
+
+
+# Laspeyres PPP for 1998
+civ1998_NORTH <- civ1998_NORTH %>%
+  mutate(LPPP = (civ1998_SOUTH$bdgshr_food[1] * (avprice_food[1]/civ1998_SOUTH$avprice_food[1]) + civ1998_SOUTH$bdgshr_othr[1] * (avprice_othr[1] / civ1998_SOUTH$avprice_othr[1])))
+
+# Laspeyres PPP for 2008
+civ2008_NORTH <- civ2008_NORTH %>%
+  mutate(LPPP = (civ2008_SOUTH$bdgshr_food[1] * (avprice_food[1]/civ2008_SOUTH$avprice_food[1]) + civ2008_SOUTH$bdgshr_othr[1] * (avprice_othr[1] / civ2008_SOUTH$avprice_othr[1])))
+
+# Combine data for all years
+combined_civ_NORTH <- bind_rows(civ1987_NORTH, civ1998_NORTH, civ2008_NORTH)
+
+# Calculate the average Laspeyres PPP for each year
+Laspeyres_PPP<- combined_civ_NORTH %>%
+  group_by(year) %>%
+  summarise(LPPP_avg = mean(LPPP, na.rm = TRUE)) %>%
+  kable(caption = 'Laspeyres PPP in the North') %>%  
+  kable_paper("hover", full_width = F, html_font = "Cambria") %>% kable_styling(bootstrap_options = c("striped", "hover"),  position = "float_left")
+# For the south region in 1987, 1998, and 2008
+# Laspeyres PPP for 1987
+civ1987_SOUTH <- civ1987_SOUTH %>%
+  mutate(LPPP = (civ1987_SOUTH$bdgshr_food[1] * (avprice_food[1]/civ1987_SOUTH$avprice_food[1]) + civ1987_SOUTH$bdgshr_othr[1] * (avprice_othr[1] / civ1987_SOUTH$avprice_othr[1])))
+
+
+# Laspeyres PPP for 1998
+civ1998_SOUTH <- civ1998_SOUTH %>%
+  mutate(LPPP = (civ1998_SOUTH$bdgshr_food[1] * (avprice_food[1]/civ1998_SOUTH$avprice_food[1]) + civ1998_SOUTH$bdgshr_othr[1] * (avprice_othr[1] / civ1998_SOUTH$avprice_othr[1])))
+
+# Laspeyres PPP for 2008
+civ2008_SOUTH <- civ2008_SOUTH %>%
+  mutate(LPPP = (civ2008_SOUTH$bdgshr_food[1] * (avprice_food[1]/civ2008_SOUTH$avprice_food[1]) + civ2008_SOUTH$bdgshr_othr[1] * (avprice_othr[1] / civ2008_SOUTH$avprice_othr[1])))
+
+# Combine data for all years
+combined_civ_SOUTH <- bind_rows(civ1987_SOUTH, civ1998_SOUTH, civ2008_SOUTH)
+
+# Calculate the average Laspeyres PPP for each year
+Laspeyres_PPP<- combined_civ_SOUTH %>%
+  group_by(year) %>%
+  summarise(LPPP_avg = mean(LPPP, na.rm = TRUE)) %>%
+  kable(caption = 'Laspeyres PPP in the North') %>%  
+  kable_paper("hover", full_width = F, html_font = "Cambria") %>% kable_styling(bootstrap_options = c("striped", "hover"),  position = "float_left")
+
+north_las<-combined_civ_NORTH  %>%  group_by(year) %>% summarise(LPPP=mean(LPPP))
+result_wide_north_las <- north_las %>%
+  pivot_wider(names_from = year, values_from = LPPP)%>% mutate(Region='North') %>%  
+  select(Region, everything())  
+
+south_las<-combined_civ_SOUTH  %>%  group_by(year) %>% summarise(LPPP=mean(LPPP))
+result_wide_south_las <- south_las %>%
+  pivot_wider(names_from = year, values_from = LPPP)%>% mutate(Region='South') %>%  
+  select(Region, everything())
+
+
+combined_df <- bind_rows(result_wide_north_las, result_wide_south_las) 
+kable(combined_df,caption = 'Laspeyres PPP')%>%  
+  kable_paper("hover", full_width = F, html_font = "Cambria") %>% kable_styling(bootstrap_options = c("striped", "hover"),  position = "float_left")
+
+# Paasche PPP
+# Paasche PPP for 1987
+
+civ1987_NORTH <- civ1987_NORTH %>%
+  mutate(PPPP = (bdgshr_food[1] * (avprice_food[1]/civ1987_SOUTH$avprice_food[1]) + bdgshr_othr[1] * (avprice_othr[1] / civ1987_SOUTH$avprice_othr[1])))
+
+
+# Paasche PPP for 1998
+civ1998_NORTH <- civ1998_NORTH %>%
+  mutate(PPPP = (bdgshr_food[1] * (avprice_food[1]/civ1998_SOUTH$avprice_food[1]) + bdgshr_othr[1] * (avprice_othr[1] / civ1998_SOUTH$avprice_othr[1])))
+
+# Paasche PPP for 2008
+civ2008_NORTH <- civ2008_NORTH %>%
+  mutate(PPPP = (bdgshr_food[1] * (avprice_food[1]/civ2008_SOUTH$avprice_food[1]) + bdgshr_othr[1] * (avprice_othr[1] / civ2008_SOUTH$avprice_othr[1])))
+
+# Combine data for all years
+combined_civ_NORTH <- bind_rows(civ1987_NORTH, civ1998_NORTH, civ2008_NORTH)
+
+
+{r}
+# For 1987, 1998, and 2008, compute Paasche PPP for Southern Côte d'Ivoire
+civ1987_SOUTH <- civ1987_SOUTH %>%
+  mutate(PPPP = (bdgshr_food[1] * (avprice_food[1]/civ1987_SOUTH$avprice_food[1]) + bdgshr_othr[1] * (avprice_othr[1] / civ1987_SOUTH$avprice_othr[1])))
+
+
+# Paasche PPP for 1998
+civ1998_SOUTH <- civ1998_SOUTH %>%
+  mutate(PPPP = (bdgshr_food[1] * (avprice_food[1]/civ1998_SOUTH$avprice_food[1]) + bdgshr_othr[1] * (avprice_othr[1] / civ1998_SOUTH$avprice_othr[1])))
+
+# Paasche PPP for 2008
+civ2008_SOUTH <- civ2008_SOUTH %>%
+  mutate(PPPP = (bdgshr_food[1] * (avprice_food[1]/civ2008_SOUTH$avprice_food[1]) + bdgshr_othr[1] * (avprice_othr[1] / civ2008_SOUTH$avprice_othr[1])))
+
+# Combine data for all years
+combined_civ_SOUTH <- bind_rows(civ1987_SOUTH, civ1998_SOUTH, civ2008_SOUTH)
+
+
+
+north_las<-combined_civ_NORTH  %>%  group_by(year) %>% summarise(PPPP=mean(PPPP))
+result_wide_north_las <- north_las %>%
+  pivot_wider(names_from = year, values_from = PPPP)%>% mutate(Region='North') %>%  
+  select(Region, everything())  
+
+south_las<-combined_civ_SOUTH  %>%  group_by(year) %>% summarise(PPPP=mean(PPPP))
+result_wide_south_las <- south_las %>%
+  pivot_wider(names_from = year, values_from = PPPP)%>% mutate(Region='South') %>%  
+  select(Region, everything())
+
+
+combined_df <- bind_rows(result_wide_north_las, result_wide_south_las) 
+kable(combined_df,caption = 'Paasche  PPP')%>%  
+  kable_paper("hover", full_width = F, html_font = "Cambria") %>% kable_styling(bootstrap_options = c("striped", "hover"),  position = "float_left")
+
+
+#the Fisher PPP
+# For 1987, 1998, and 2008, compute Fisher PPP for Northern Côte d'Ivoire
+
+# Fisher PPP for 1987
+civ1987_NORTH <- civ1987_NORTH %>%
+  mutate(Fisher_PPP = sqrt(LPPP * PPPP))
+
+# Fisher PPP for 1998
+civ1998_NORTH <- civ1998_NORTH %>%
+  mutate(Fisher_PPP = sqrt(LPPP * PPPP))
+
+# Fisher PPP for 2008
+civ2008_NORTH <- civ2008_NORTH %>%
+  mutate(Fisher_PPP = sqrt(LPPP * PPPP))
+
+# Combine data for all years
+combined_civ_NORTH <- bind_rows(civ1987_NORTH, civ1998_NORTH, civ2008_NORTH)
+
+# For 1987, 1998, and 2008, compute Fisher PPP for Southern Côte d'Ivoire
+
+# Fisher PPP for 1987 in the South
+civ1987_SOUTH <- civ1987_SOUTH %>%
+  mutate(Fisher_PPP = sqrt(LPPP * PPPP))
+
+# Fisher PPP for 1998 in the South
+civ1998_SOUTH <- civ1998_SOUTH %>%
+  mutate(Fisher_PPP = sqrt(LPPP * PPPP))
+
+# Fisher PPP for 2008 in the South
+civ2008_SOUTH <- civ2008_SOUTH %>%
+  mutate(Fisher_PPP = sqrt(LPPP * PPPP))
+
+# Combine data for all years in the South
+combined_civ_SOUTH <- bind_rows(civ1987_SOUTH, civ1998_SOUTH, civ2008_SOUTH)
+
+north_las<-combined_civ_NORTH  %>%  group_by(year) %>% summarise(Fisher_PPP=mean(Fisher_PPP))
+result_wide_north_las <- north_las %>%
+  pivot_wider(names_from = year, values_from = Fisher_PPP)%>% mutate(Region='North') %>%  
+  select(Region, everything())  
+
+south_las<-combined_civ_SOUTH  %>%  group_by(year) %>% summarise(Fisher_PPP=mean(Fisher_PPP))
+result_wide_south_las <- south_las %>%
+  pivot_wider(names_from = year, values_from = Fisher_PPP)%>% mutate(Region='South') %>%  
+  select(Region, everything())
+
+
+combined_df <- bind_rows(result_wide_north_las, result_wide_south_las) 
+kable(combined_df,caption = 'Fisher  PPP')%>%  
+  kable_paper("hover", full_width = F, html_font = "Cambria") %>% kable_styling(bootstrap_options = c("striped", "hover"),  position = "float_left")
+
+
