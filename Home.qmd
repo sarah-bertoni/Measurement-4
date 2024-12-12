@@ -1,0 +1,662 @@
+---
+title: "Homework 4"
+format: html
+editor: visual
+---
+
+# Homework 4
+
+```{r}
+### Libraries
+library(sandwich)
+library(lmtest)
+library(magrittr)
+library(stringr)
+library(haven)
+library(tidyverse)
+library(psych)
+library(DT)
+library(huxtable)
+library(AER)
+library(stargazer)
+library(car)
+library(modelsummary)
+library(ggrepel)
+library(kableExtra)
+library(viridis)
+library(gridExtra)
+library(matrixStats)
+library(Hmisc)
+library(weights)
+library(rmarkdown)
+library(broom)
+
+library(haven)
+library(tidyverse)
+library(knitr)
+library(kableExtra)
+library(tidyr)
+library(Amelia)
+library(sandwich)
+library(lmtest)
+library(miceadds)
+library(huxtable)
+library(matrixStats)
+library(float) 
+library(stargazer)
+library(readxl)
+library(gridExtra)
+library(huxtable)
+library(broom)
+```
+
+```{r}
+civ <- read_dta("civ_87_08.dta")
+```
+
+### **1 Sampling and outliers**
+
+#### (a) In terms of sampling, what are the main limitations of survey data for measuring inequality?
+
+Household surveys, our main source of inequality measures, track either income or consumption expenditure. Countries vary in terms of which measure is used - the Industrialized Countries and Latin America tend to use income surveys, while South Asia, Sub-Saharan Africa, and the Middle East use consumption. Given the fact that richer households tend to consume a smaller share of their incomes than poorer households (or equivalently, the rich have higher saving rates than the poor), estimates of inequality based on consumption would underestimate the extent of inequality.
+
+Lecture 3 measurement.
+
+Another measurement challenge that we face is accurately estimating the incomes (or consumption) at the top. <https://blogs.worldbank.org/en/developmenttalk/measuring-inequality-isn-t-easy-or-straightforward-here-s-why>
+
+#### (b) Why can it be important to exclude outliers for measuring inequality?
+
+Large outliers (especially at the top) strongly influence the results of inequality measuring; large outliers may infleucne the shape of the distribution and skew it to the right, with it being otherwise normal. Overestimation of large income.
+
+#### (c) Compute the level of consumption per capita per each household.
+
+Should we use adult equivalence instead?
+
+```{r}
+civ <- civ %>% mutate(cons_pc=constot/hhsize) #
+```
+
+How is it distributed?
+
+```{r, fig.width=3, fig.height=3}
+ggplot( civ,aes(y=cons_pc)) +
+    geom_boxplot(fill='deepskyblue2') +
+    scale_fill_viridis(discrete = TRUE, alpha=0.6) +
+    theme_classic() +
+    theme(
+      legend.position="none",
+      plot.title = element_text(size=11)
+    ) +
+    ggtitle("Consumption per capita boxplot") +
+    ylab("Consumption per capita")+
+  labs(caption = "Source:cvi")+theme(
+    plot.title = element_text(size = 9),     
+    plot.subtitle = element_text(size = 7),  
+    plot.caption = element_text(size = 7),
+     axis.title.x = element_text(size = 7),
+     axis.title.y = element_text(size=7))
+```
+
+```{r}
+civ1987 <- civ %>% filter(year==1987) %>% mutate(log=log(cons_pc)) %>% mutate(medianpc=median(log)) %>% mutate(sdpc= sd(log)) %>% filter(log<(medianpc+3*sdpc)&log>(medianpc-3*sdpc))
+
+civ1998 <- civ %>% filter(year==1998) %>% mutate(log=log(cons_pc)) %>% mutate(medianpc=median(log)) %>% mutate(sdpc= sd(log)) %>% filter(log<(medianpc+3*sdpc)&log>(medianpc-3*sdpc))
+civ2008 <- civ %>% filter(year==2008) %>% mutate(log=log(cons_pc)) %>% mutate(medianpc=median(log)) %>% mutate(sdpc= sd(log)) %>% filter(log<(medianpc+3*sdpc)&log>(medianpc-3*sdpc))
+
+plot_bf1<-ggplot(civ1987, aes(cons_pc)) +
+  geom_histogram(aes(y = after_stat(density)), 
+                 binwidth = 100, 
+                 colour = "black", fill = "white", 
+                 alpha = 0.5) +  
+  geom_density(aes(y = ..density..), 
+               alpha = 0.2, fill = "lightblue") +
+  theme_minimal() +
+  labs(title = "1987 consumption per capita distribution histogram - with Density Plot",
+       x = "consumption pc", y = "Density")+theme(
+    plot.title = element_text(size = 8),     
+    plot.subtitle = element_text(size = 7),  
+    plot.caption = element_text(size = 7),
+     axis.title.x = element_text(size = 6),
+     axis.title.y = element_text(size=6)) + 
+  geom_vline(xintercept = mean(civ1987$log, na.rm = TRUE), 
+             color = "darkgreen", linetype = "dashed", size = 1)+
+  xlim(0,5000)
+
+plot_bf2<-ggplot(civ1998, aes(cons_pc)) +
+  geom_histogram(aes(y = after_stat(density)), 
+                 binwidth = 100, 
+                 colour = "black", fill = "white", 
+                 alpha = 0.5) +  
+  geom_density(aes(y = ..density..), 
+               alpha = 0.2, fill = "lightblue") +
+  theme_minimal() +
+  labs(title = "1998 consumption per capita distribution histogram - with Density Plot",
+       x = "consumption pc", y = "Density")+theme(
+    plot.title = element_text(size = 8),     
+    plot.subtitle = element_text(size = 7),  
+    plot.caption = element_text(size = 7),
+     axis.title.x = element_text(size = 6),
+     axis.title.y = element_text(size=6)) + 
+  geom_vline(xintercept = mean(civ1998$log, na.rm = TRUE), 
+             color = "darkgreen", linetype = "dashed", size = 1)+
+ xlim(0,5000)
+
+plot_bf3<-ggplot(civ2008, aes(cons_pc)) +
+  geom_histogram(aes(y = after_stat(density)), 
+                 binwidth = 100, 
+                 colour = "black", fill = "white", 
+                 alpha = 0.5) +  
+  geom_density(aes(y = ..density..), 
+               alpha = 0.2, fill = "lightblue") +
+  theme_minimal() +
+  labs(title = "2008 log consumption per capita distribution histogram - with Density Plot",
+       x = "consumption pc", y = "Density")+theme(
+    plot.title = element_text(size = 8),     
+    plot.subtitle = element_text(size = 7),  
+    plot.caption = element_text(size = 7),
+     axis.title.x = element_text(size = 6),
+     axis.title.y = element_text(size=6)) + 
+  geom_vline(xintercept = mean(civ2008$log, na.rm = TRUE), 
+             color = "darkgreen", linetype = "dashed", size = 1)+
+ xlim(0,5000)
+
+grid.arrange(plot_bf1, plot_bf2, plot_bf3, ncol = 1)
+```
+
+Very right skewed
+
+#### (d) It is proposed to computed the (non-weighted) median and standard deviation of the logarithm of consumption per capita for each year separately, and then to exclude those households whose logarithm consumption per capita is higher than the median by more than 3 standard deviations, or lower than the median by more than 3 standard deviations.
+
+**-- Why is it suggested to take the logarithm? Why can ± 3 standard deviations be deemed rather safe?**
+
+Logaritm allows for a better normal distribution and renders the distribution less sensible to outliers.
+
+**-- Why should you use the unweighted median rather than the weighted median to identify outliers ?**
+
+The real question here is why should I use the weighted one; outliers by definition do not fit the distribution, of I use the weighted median we'd risk not identifying them. Does it make sense? I don't think so.
+
+**-- Withdraw these observations from your database. This should not drop more than 157 observations in total.**
+
+Plot distribution.
+
+```{r}
+
+
+plot2<-ggplot(civ1987, aes(log)) +
+  geom_histogram(aes(y = after_stat(density)), 
+                 binwidth = 0.5, 
+                 colour = "black", fill = "white", 
+                 alpha = 0.5) +  
+  geom_density(aes(y = ..density..), 
+               alpha = 0.2, fill = "lightblue") +
+  theme_minimal() +
+  labs(title = "1987 log consumption per capita distribution histogram - with Density Plot",
+       x = "consumption pc", y = "Density")+theme(
+    plot.title = element_text(size = 8),     
+    plot.subtitle = element_text(size = 7),  
+    plot.caption = element_text(size = 7),
+     axis.title.x = element_text(size = 6),
+     axis.title.y = element_text(size=6)) + 
+  geom_vline(xintercept = mean(civ1987$log, na.rm = TRUE), 
+             color = "darkgreen", linetype = "dashed", size = 1)+
+  xlim(2,10)
+
+plot3<-ggplot(civ1998, aes(log)) +
+  geom_histogram(aes(y = after_stat(density)), 
+                 binwidth = 0.5, 
+                 colour = "black", fill = "white", 
+                 alpha = 0.5) +  
+  geom_density(aes(y = ..density..), 
+               alpha = 0.2, fill = "lightblue") +
+  theme_minimal() +
+  labs(title = "1998 log consumption per capita distribution histogram - with Density Plot",
+       x = "consumption pc", y = "Density")+theme(
+    plot.title = element_text(size = 8),     
+    plot.subtitle = element_text(size = 7),  
+    plot.caption = element_text(size = 7),
+     axis.title.x = element_text(size = 6),
+     axis.title.y = element_text(size=6)) + 
+  geom_vline(xintercept = mean(civ1998$log, na.rm = TRUE), 
+             color = "darkgreen", linetype = "dashed", size = 1)+
+  xlim(2,10)
+
+plot4<-ggplot(civ2008, aes(log)) +
+  geom_histogram(aes(y = after_stat(density)), 
+                 binwidth = 0.5, 
+                 colour = "black", fill = "white", 
+                 alpha = 0.5) +  
+  geom_density(aes(y = ..density..), 
+               alpha = 0.2, fill = "lightblue") +
+  theme_minimal() +
+  labs(title = "2008 log consumption per capita distribution histogram - with Density Plot",
+       x = "consumption pc", y = "Density")+theme(
+    plot.title = element_text(size = 8),     
+    plot.subtitle = element_text(size = 7),  
+    plot.caption = element_text(size = 7),
+     axis.title.x = element_text(size = 6),
+     axis.title.y = element_text(size=6)) + 
+  geom_vline(xintercept = mean(civ2008$log, na.rm = TRUE), 
+             color = "darkgreen", linetype = "dashed", size = 1)+
+  xlim(2,10)
+
+
+grid.arrange(plot2, plot3, plot4, ncol = 1)
+```
+
+```{r}
+combined_civ <- bind_rows(civ1987, civ1998, civ2008)
+#121 observation dropped. It is fine! 
+```
+
+### **2 Consumer Price Index and Purchasing Power Parities (4 points)**
+
+#### (a) Compute the budget shares of food and non-food consumption for the representative households in each region.
+
+-- Create a dummy variable which identifies the representative households.
+
+Representative household: 4 members, male-headed and whose head is a blue-collar worker, either self-employed outside agriculture or a farmer.
+
+```{r}
+civ <- combined_civ %>% mutate(repr=(ifelse(hhsize==4 & femalehead==0 & (work_farmer==1|work_selfem==1),1,0)))
+```
+
+**Share of representative household**
+
+```{r}
+summary(civ$repr) #=6.51 do it with lm
+```
+
+-- Generate the share of food expenditure in the household consumption, for each household.
+
+```{r}
+civ <- civ %>% mutate(food_share = exp_food/constot) %>% mutate(non_food_share = exp_othr/constot)
+```
+
+-- Build a weight equal to the number of people in the household multiplied by the weight of the household multiplied by the consumption per capita of the household.
+
+```{r}
+civ <- civ %>%  mutate(weight=hhsize*weight*cons_pc)
+```
+
+-- Calculate the weighted average of the share of food expenditure for the representative household in North and South Cˆote d'Ivoire using the weights that you just computed, and show mathematically why you should use these weights. Table 2 below sums up the results that you should be observing.
+
+**Food**
+
+```{r}
+civ %>% filter(repr==1) %>% group_by(year)  %>% filter(north==1)%>%  summarise(average= weighted.mean(food_share,weight, na.rm = T))  %>% kable()
+civ %>% filter(repr==1) %>% group_by(year)  %>% filter(north==0)%>%  summarise(average= weighted.mean(food_share,weight, na.rm = T))  %>% kable()
+```
+
+**Non food**
+
+```{r}
+#north
+civ %>% filter(repr==1) %>% group_by(year)  %>% filter(north==1)%>%  summarise(average= weighted.mean(non_food_share,weight, na.rm = T))  %>% kable()
+#south
+civ %>% filter(repr==1) %>% group_by(year)  %>% filter(north==0)%>%  summarise(average= weighted.mean(non_food_share,weight, na.rm = T))  %>% kable()
+```
+
+```{r}
+north<-civ %>% filter(repr==1) %>% group_by(year)  %>% filter(north==1)
+northlm<- (lm(data = north, formula = food_share ~ 1, weights = weight))
+
+
+models_cons <- huxreg("Spain" = lm_eqi_house_es,
+                  "Denmark" = lm_eqi_house_dk, 
+                  "United Kingdom" = lm_eqi_house_uk, 
+              
+                  error_format = "({std.error})",
+                  error_pos = "below",
+                  statistics = c(N = "nobs"),
+                  note = "{stars}",
+                  align = "center") %>%
+  set_caption("Average equivalent Household Income per country- in EURO")
+set_latex_float(models_income, value = "H")
+```
+
+\(b\) variables avprice food, avprice other, bdgshr food, bdgshr other. With 1987 as the base year, compute:
+
+-- the Laspeyres CPI for each region.
+
+-- the Paasche CPI for each region.
+
+Comment on the theoretical differences between the two measures, even if you do not see a big difference empirically. Comment on the change in CPI over time, comparing regions.
+
+**Laspeyres CPI**
+
+Cost of a group of commodities at current prices, dividing this by the cost of the same group of commodities at base period prices, and then multiplying by 100
+
+$\text{Laspeyres CPI}_{\text{region}} = \text{bdgshr food}_0\times\frac{\text{avprice food}_t }{\text{avprice food}_0} + \frac{\text{avprice other}_t}{\text{avprice other}_0} \times \text{bdgshr other}_0$
+
+```{r}
+civ1987_NORTH<-civ1987%>% filter(north==1) 
+civ1987_NORTH<- civ1987_NORTH%>% mutate(LCPI=(mean(civ1987_NORTH$bdgshr_food)*avprice_food+mean(civ1987_NORTH$bdgshr_othr)*avprice_othr))
+civ1998_NORTH<-civ1998%>% filter(north==1) %>% mutate(LCPI=(mean(civ1987_NORTH$bdgshr_food)*avprice_food+mean(civ1987_NORTH$bdgshr_othr)*avprice_othr))
+civ2008_NORTH<-civ2008%>% filter(north==1) %>% mutate(LCPI=(mean(civ1987_NORTH$bdgshr_food)*avprice_food+mean(civ1987_NORTH$bdgshr_othr)*avprice_othr))
+
+
+combined_civ_NORTH <- bind_rows(civ1987_NORTH, civ1998_NORTH, civ2008_NORTH)
+
+north_civ<-combined_civ_NORTH %>% mutate(LPCI_index=LCPI*100/(mean(civ1987_NORTH$bdgshr_food)*mean(civ1987_NORTH$avprice_food)+(mean(civ1987_NORTH$bdgshr_othr)*mean(civ1987_NORTH$avprice_othr))))
+
+north_lasp<-north_civ  %>%  group_by(year) %>% summarise(CPI=mean(LPCI_index))
+result_wide_north_lasp <- north_lasp %>%
+  pivot_wider(names_from = year, values_from = CPI)%>% mutate(Region='North') %>%  
+  select(Region, everything())  
+
+
+```
+
+**South**
+
+```{r}
+civ1987_SOUTH<-civ1987%>% filter(north==0) 
+civ1987_SOUTH<-civ1987_SOUTH%>% mutate(LCPI=(civ1987_SOUTH$bdgshr_food*avprice_food+mean(civ1987_SOUTH$bdgshr_othr)*avprice_othr))
+civ1998_SOUTH<-civ1998%>% filter(north==0) %>% mutate(LCPI=civ1987_SOUTH$bdgshr_food*avprice_food+mean(civ1987_SOUTH$bdgshr_othr)*avprice_othr)
+civ2008_SOUTH<-civ2008%>% filter(north==0) %>% mutate(LCPI=mean(civ1987_SOUTH$bdgshr_food)*avprice_food+mean(civ1987_SOUTH$bdgshr_othr)*avprice_othr)
+
+
+combined_civ_SOUTH <- bind_rows(civ1987_SOUTH, civ1998_SOUTH, civ2008_SOUTH)
+
+
+SOUTH_civ<-combined_civ_SOUTH %>% mutate(L_CPI=LCPI*100/(mean(civ1987_SOUTH$bdgshr_food)*mean(civ1987_SOUTH$avprice_food)+(mean(civ1987_SOUTH$bdgshr_othr)*mean(civ1987_SOUTH$avprice_othr))))
+south_lasp<- SOUTH_civ  %>%  group_by(year) %>% summarise(CPI=mean(L_CPI)) 
+result_wide_south_lasp <- south_lasp %>%
+  pivot_wider(names_from = year, values_from = CPI) %>% mutate(Region='South') %>%  
+  select(Region, everything())  
+
+
+combined_df <- bind_rows(result_wide_north_lasp, result_wide_south_lasp) 
+kable(combined_df,caption = 'Laspeyres CPI')%>%  
+  kable_paper("hover", full_width = F, html_font = "Cambria") %>% kable_styling(bootstrap_options = c("striped", "hover"),  position = "float_left")
+
+```
+
+**the Paasche CPI**
+
+Same but use same budget share and different prices (base year)
+
+$\text{Paasche CPI}_{\text{region}} = \frac{(\text{avprice food}_t \times \text{bdgshr food}_t) + (\text{avprice other}_t \times \text{bdgshr other}_t)}{(\text{avprice food}_0 \times \text{bdgshr food}_t) + (\text{avprice other}_0 \times \text{bdgshr other}_t)} \times 100$
+
+```{r}
+civ1987_SOUTH<-civ1987%>% filter(north==0) %>% mutate(LCPI=bdgshr_food*avprice_food+bdgshr_othr*avprice_othr)
+civ1998_SOUTH<-civ1998%>% filter(north==0) %>%mutate(LCPI=bdgshr_food*avprice_food+bdgshr_othr*avprice_othr)
+civ2008_SOUTH<-civ2008%>% filter(north==0) %>% mutate(LCPI=bdgshr_food*avprice_food+bdgshr_othr*avprice_othr)
+combined_civ_SOUTH <- bind_rows(civ1987_SOUTH, civ1998_SOUTH, civ2008_SOUTH)
+
+SOUTH_civ<-combined_civ_SOUTH %>% mutate(PCPI=LCPI*100/(bdgshr_food*mean(civ1987_SOUTH$avprice_food)+bdgshr_othr*mean(civ1987_SOUTH$avprice_othr)))
+
+
+
+south_pas<- SOUTH_civ  %>%  group_by(year) %>% summarise(CPI=mean(PCPI)) 
+result_wide_south_pas <- south_pas %>%
+  pivot_wider(names_from = year, values_from = CPI) %>% mutate(Region='South') %>%  
+  select(Region, everything())  
+
+
+```
+
+**North**
+
+```{r}
+
+civ1987_NORTH <- civ1987 %>% filter(north == 1) %>% mutate(LCPI = bdgshr_food * avprice_food + bdgshr_othr * avprice_othr)
+civ1998_NORTH <- civ1998 %>% filter(north == 1) %>% mutate(LCPI = bdgshr_food * avprice_food + bdgshr_othr * avprice_othr)
+civ2008_NORTH <- civ2008 %>% filter(north == 1) %>% mutate(LCPI = bdgshr_food * avprice_food + bdgshr_othr * avprice_othr)
+combined_civ_NORTH <- bind_rows(civ1987_NORTH, civ1998_NORTH, civ2008_NORTH)
+
+NORTH_civ <- combined_civ_NORTH %>% mutate(PCPI = LCPI * 100 / (bdgshr_food * mean(civ1987_NORTH$avprice_food) + bdgshr_othr * mean(civ1987_NORTH$avprice_othr)))
+
+
+north_pas<-NORTH_civ  %>%  group_by(year) %>% summarise(CPI=mean(PCPI))
+result_wide_north_pas <- north_pas %>%
+  pivot_wider(names_from = year, values_from = CPI)%>% mutate(Region='North') %>%  
+  select(Region, everything())  
+
+
+combined_df <- bind_rows(result_wide_north_pas, result_wide_south_pas) 
+kable(combined_df,caption = 'Laspeyres CPI')%>%  
+  kable_paper("hover", full_width = F, html_font = "Cambria") %>% kable_styling(bootstrap_options = c("striped", "hover"),  position = "float_left")
+
+```
+
+#### (c) Compute a PPP aggregate for the North region with respect to the South. For each year in your dataset, compute:
+
+**-- the Laspeyres PPP of Northern Cˆote d'Ivoire.**
+
+```{r}
+# For 1987, 1998, and 2008, compute Laspeyres PPP for Northern Côte d'Ivoire
+
+# Laspeyres PPP for 1987
+civ1987_NORTH <- civ1987_NORTH %>%
+  mutate(LPPP = (civ1987_SOUTH$bdgshr_food[1] * (avprice_food[1]/civ1987_SOUTH$avprice_food[1]) + civ1987_SOUTH$bdgshr_othr[1] * (avprice_othr[1] / civ1987_SOUTH$avprice_othr[1])))
+
+
+# Laspeyres PPP for 1998
+civ1998_NORTH <- civ1998_NORTH %>%
+  mutate(LPPP = (civ1998_SOUTH$bdgshr_food[1] * (avprice_food[1]/civ1998_SOUTH$avprice_food[1]) + civ1998_SOUTH$bdgshr_othr[1] * (avprice_othr[1] / civ1998_SOUTH$avprice_othr[1])))
+
+# Laspeyres PPP for 2008
+civ2008_NORTH <- civ2008_NORTH %>%
+  mutate(LPPP = (civ2008_SOUTH$bdgshr_food[1] * (avprice_food[1]/civ2008_SOUTH$avprice_food[1]) + civ2008_SOUTH$bdgshr_othr[1] * (avprice_othr[1] / civ2008_SOUTH$avprice_othr[1])))
+
+# Combine data for all years
+combined_civ_NORTH <- bind_rows(civ1987_NORTH, civ1998_NORTH, civ2008_NORTH)
+
+# Calculate the average Laspeyres PPP for each year
+Laspeyres_PPP<- combined_civ_NORTH %>%
+  group_by(year) %>%
+  summarise(LPPP_avg = mean(LPPP, na.rm = TRUE)) %>%
+  kable(caption = 'Laspeyres PPP in the North') %>%  
+  kable_paper("hover", full_width = F, html_font = "Cambria") %>% kable_styling(bootstrap_options = c("striped", "hover"),  position = "float_left")
+
+
+```
+
+```{r}
+# For the south region in 1987, 1998, and 2008
+# Laspeyres PPP for 1987
+civ1987_SOUTH <- civ1987_SOUTH %>%
+  mutate(LPPP = (civ1987_SOUTH$bdgshr_food[1] * (avprice_food[1]/civ1987_SOUTH$avprice_food[1]) + civ1987_SOUTH$bdgshr_othr[1] * (avprice_othr[1] / civ1987_SOUTH$avprice_othr[1])))
+
+
+# Laspeyres PPP for 1998
+civ1998_SOUTH <- civ1998_SOUTH %>%
+  mutate(LPPP = (civ1998_SOUTH$bdgshr_food[1] * (avprice_food[1]/civ1998_SOUTH$avprice_food[1]) + civ1998_SOUTH$bdgshr_othr[1] * (avprice_othr[1] / civ1998_SOUTH$avprice_othr[1])))
+
+# Laspeyres PPP for 2008
+civ2008_SOUTH <- civ2008_SOUTH %>%
+  mutate(LPPP = (civ2008_SOUTH$bdgshr_food[1] * (avprice_food[1]/civ2008_SOUTH$avprice_food[1]) + civ2008_SOUTH$bdgshr_othr[1] * (avprice_othr[1] / civ2008_SOUTH$avprice_othr[1])))
+
+# Combine data for all years
+combined_civ_SOUTH <- bind_rows(civ1987_SOUTH, civ1998_SOUTH, civ2008_SOUTH)
+
+# Calculate the average Laspeyres PPP for each year
+Laspeyres_PPP<- combined_civ_SOUTH %>%
+  group_by(year) %>%
+  summarise(LPPP_avg = mean(LPPP, na.rm = TRUE)) %>%
+  kable(caption = 'Laspeyres PPP in the North') %>%  
+  kable_paper("hover", full_width = F, html_font = "Cambria") %>% kable_styling(bootstrap_options = c("striped", "hover"),  position = "float_left")
+
+north_las<-combined_civ_NORTH  %>%  group_by(year) %>% summarise(LPPP=mean(LPPP))
+result_wide_north_las <- north_las %>%
+  pivot_wider(names_from = year, values_from = LPPP)%>% mutate(Region='North') %>%  
+  select(Region, everything())  
+
+south_las<-combined_civ_SOUTH  %>%  group_by(year) %>% summarise(LPPP=mean(LPPP))
+result_wide_south_las <- south_las %>%
+  pivot_wider(names_from = year, values_from = LPPP)%>% mutate(Region='South') %>%  
+  select(Region, everything())
+
+
+combined_df <- bind_rows(result_wide_north_las, result_wide_south_las) 
+kable(combined_df,caption = 'Laspeyres PPP')%>%  
+  kable_paper("hover", full_width = F, html_font = "Cambria") %>% kable_styling(bootstrap_options = c("striped", "hover"),  position = "float_left")
+```
+
+**-- the Paasche PPP of Northern Cˆote d'Ivoire.**
+
+```{r}
+
+# Paasche PPP for 1987
+
+civ1987_NORTH <- civ1987_NORTH %>%
+  mutate(PPPP = (bdgshr_food[1] * (avprice_food[1]/civ1987_SOUTH$avprice_food[1]) + bdgshr_othr[1] * (avprice_othr[1] / civ1987_SOUTH$avprice_othr[1])))
+
+
+# Paasche PPP for 1998
+civ1998_NORTH <- civ1998_NORTH %>%
+  mutate(PPPP = (bdgshr_food[1] * (avprice_food[1]/civ1998_SOUTH$avprice_food[1]) + bdgshr_othr[1] * (avprice_othr[1] / civ1998_SOUTH$avprice_othr[1])))
+
+# Paasche PPP for 2008
+civ2008_NORTH <- civ2008_NORTH %>%
+  mutate(PPPP = (bdgshr_food[1] * (avprice_food[1]/civ2008_SOUTH$avprice_food[1]) + bdgshr_othr[1] * (avprice_othr[1] / civ2008_SOUTH$avprice_othr[1])))
+
+# Combine data for all years
+combined_civ_NORTH <- bind_rows(civ1987_NORTH, civ1998_NORTH, civ2008_NORTH)
+
+
+```
+
+```{r}
+# For 1987, 1998, and 2008, compute Paasche PPP for Southern Côte d'Ivoire
+civ1987_SOUTH <- civ1987_SOUTH %>%
+  mutate(PPPP = (bdgshr_food[1] * (avprice_food[1]/civ1987_SOUTH$avprice_food[1]) + bdgshr_othr[1] * (avprice_othr[1] / civ1987_SOUTH$avprice_othr[1])))
+
+
+# Paasche PPP for 1998
+civ1998_SOUTH <- civ1998_SOUTH %>%
+  mutate(PPPP = (bdgshr_food[1] * (avprice_food[1]/civ1998_SOUTH$avprice_food[1]) + bdgshr_othr[1] * (avprice_othr[1] / civ1998_SOUTH$avprice_othr[1])))
+
+# Paasche PPP for 2008
+civ2008_SOUTH <- civ2008_SOUTH %>%
+  mutate(PPPP = (bdgshr_food[1] * (avprice_food[1]/civ2008_SOUTH$avprice_food[1]) + bdgshr_othr[1] * (avprice_othr[1] / civ2008_SOUTH$avprice_othr[1])))
+
+# Combine data for all years
+combined_civ_SOUTH <- bind_rows(civ1987_SOUTH, civ1998_SOUTH, civ2008_SOUTH)
+
+
+
+north_las<-combined_civ_NORTH  %>%  group_by(year) %>% summarise(PPPP=mean(PPPP))
+result_wide_north_las <- north_las %>%
+  pivot_wider(names_from = year, values_from = PPPP)%>% mutate(Region='North') %>%  
+  select(Region, everything())  
+
+south_las<-combined_civ_SOUTH  %>%  group_by(year) %>% summarise(PPPP=mean(PPPP))
+result_wide_south_las <- south_las %>%
+  pivot_wider(names_from = year, values_from = PPPP)%>% mutate(Region='South') %>%  
+  select(Region, everything())
+
+
+combined_df <- bind_rows(result_wide_north_las, result_wide_south_las) 
+kable(combined_df,caption = 'Paasche  PPP')%>%  
+  kable_paper("hover", full_width = F, html_font = "Cambria") %>% kable_styling(bootstrap_options = c("striped", "hover"),  position = "float_left")
+
+```
+
+**-- the Fisher PPP**
+
+```{r}
+# For 1987, 1998, and 2008, compute Fisher PPP for Northern Côte d'Ivoire
+
+# Fisher PPP for 1987
+civ1987_NORTH <- civ1987_NORTH %>%
+  mutate(Fisher_PPP = sqrt(LPPP * PPPP))
+
+# Fisher PPP for 1998
+civ1998_NORTH <- civ1998_NORTH %>%
+  mutate(Fisher_PPP = sqrt(LPPP * PPPP))
+
+# Fisher PPP for 2008
+civ2008_NORTH <- civ2008_NORTH %>%
+  mutate(Fisher_PPP = sqrt(LPPP * PPPP))
+
+# Combine data for all years
+combined_civ_NORTH <- bind_rows(civ1987_NORTH, civ1998_NORTH, civ2008_NORTH)
+
+
+```
+
+```{r}
+# For 1987, 1998, and 2008, compute Fisher PPP for Southern Côte d'Ivoire
+
+# Fisher PPP for 1987 in the South
+civ1987_SOUTH <- civ1987_SOUTH %>%
+  mutate(Fisher_PPP = sqrt(LPPP * PPPP))
+
+# Fisher PPP for 1998 in the South
+civ1998_SOUTH <- civ1998_SOUTH %>%
+  mutate(Fisher_PPP = sqrt(LPPP * PPPP))
+
+# Fisher PPP for 2008 in the South
+civ2008_SOUTH <- civ2008_SOUTH %>%
+  mutate(Fisher_PPP = sqrt(LPPP * PPPP))
+
+# Combine data for all years in the South
+combined_civ_SOUTH <- bind_rows(civ1987_SOUTH, civ1998_SOUTH, civ2008_SOUTH)
+
+north_las<-combined_civ_NORTH  %>%  group_by(year) %>% summarise(Fisher_PPP=mean(Fisher_PPP))
+result_wide_north_las <- north_las %>%
+  pivot_wider(names_from = year, values_from = Fisher_PPP)%>% mutate(Region='North') %>%  
+  select(Region, everything())  
+
+south_las<-combined_civ_SOUTH  %>%  group_by(year) %>% summarise(Fisher_PPP=mean(Fisher_PPP))
+result_wide_south_las <- south_las %>%
+  pivot_wider(names_from = year, values_from = Fisher_PPP)%>% mutate(Region='South') %>%  
+  select(Region, everything())
+
+
+combined_df <- bind_rows(result_wide_north_las, result_wide_south_las) 
+kable(combined_df,caption = 'Fisher  PPP')%>%  
+  kable_paper("hover", full_width = F, html_font = "Cambria") %>% kable_styling(bootstrap_options = c("striped", "hover"),  position = "float_left")
+
+
+
+```
+
+**Comment on the theoretical differences between the three measures, even if you do not see a big difference empirically. Comment on the PPP differences between regions and over time.**
+
+#### (d) Use the Laspeyres CPI and PPP available in Table 3 and convert the values of the consumption variable for all years and regions into comparable values, taking as a reference the South of Cote d'Ivoire in 1987. Explain your computation. Present average consumption, before and after this modification, in each region, for each year, and comment on the changes.
+
+We firstly use the ppp to convert the consumption expenditure of the north into comparable values for the south.
+
+```{r}
+civ <- combined_civ %>% mutate(cons_87=ifelse(north==1, conspc/(ppp/100),conspc))
+
+```
+
+We then proceed to use the CPI of the south (which is related to 1987) to trasform the consumption values into values comparable to 1987 south.
+
+```{r}
+civ <- civ %>% mutate(cons_87=cons_87/(cpi/100))%>% mutate(weight2=weight*hhsize)
+
+
+civ %>% mutate(Regions=ifelse(north==1, 'north', 'south')) %>% 
+  group_by(Regions, year) %>%
+  summarise('consumption ppp' = weighted.mean(cons_87, weight2)) %>%
+  pivot_wider(names_from = year, values_from = 'consumption ppp') %>%
+  kable(col.names = c('Region', '1987', '1998', '2008'), caption = 'Consumption pc in ppp')%>%  
+  kable_paper("hover", full_width = F, html_font = "Cambria") %>% kable_styling(bootstrap_options = c("striped", "hover"),  position = "float_left")
+
+```
+
+```{r}
+civ %>% mutate(Regions=ifelse(north==1, 'north', 'south')) %>% 
+  group_by(Regions, year) %>%
+  summarise('consumption' = mean(conspc, na.rm = TRUE)) %>%
+  pivot_wider(names_from = year, values_from = 'consumption') %>%
+  kable(col.names = c('Region', '1987', '1998', '2008'), caption = 'Consumption pc before adjustment')%>%  
+  kable_paper("hover", full_width = F, html_font = "Cambria") %>% kable_styling(bootstrap_options = c("striped", "hover"),  position = "float_left")
+
+```
+
+## 3. Poverty Rate headcount
+
+```{r}
+civ<-civ %>% mutate(pov=ifelse(cons_87<237,1,0)) 
+summary(civ$pov)
+civ %>% mutate(Regions=ifelse(north==1, 'North', 'South')) %>% 
+  group_by(Regions, year) %>% summarise(poverty= round(weighted.mean(pov, weight2), 3)) %>% pivot_wider(names_from = year, values_from = poverty) %>%
+  kable(col.names = c('Region', '1987', '1998', '2008'), caption = 'Poverty rates headcount')%>%  
+  kable_paper("hover", full_width = F, html_font = "Cambria") %>% kable_styling(bootstrap_options = c("striped", "hover"),  position = "float_left")
+```
