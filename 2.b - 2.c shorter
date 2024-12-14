@@ -1,0 +1,46 @@
+## 2.b
+# Computing the Laspeyres and Paasche CPI in the North
+data_north <- data %>% 
+  filter(north == 1) %>%  
+  group_by(year) %>% 
+  summarise(p_f = mean(avprice_food),
+            p_o = mean(avprice_othr),
+            bsf = mean(bdgshr_food),
+            bso = mean(bdgshr_othr)
+            )
+CPIs_North <- data_north %>% 
+    mutate(Laspeyres = (p_f/subset(data_north, year == 1987)$p_f * subset(data_north, year == 1987)$bsf +
+                      p_o/subset(data_north, year == 1987)$p_o * subset(data_north, year == 1987)$bso),
+           Paasche = (p_f/subset(data_north, year == 1987)$p_f * bsf +
+                    p_o/subset(data_north, year == 1987)$p_o * bso))
+
+# Computing the Laspeyres and Paasche CPI in the South
+data_south <- data %>% 
+  filter(north == 0) %>% 
+  group_by(year) %>% 
+  summarise(p_f = mean(avprice_food),
+            p_o = mean(avprice_othr),
+            bsf = mean(bdgshr_food),
+            bso = mean(bdgshr_othr)
+            )
+CPIs_South <- data_south %>% 
+    mutate(Laspeyres = (p_f/subset(data_south, year == 1987)$p_f * subset(data_south, year == 1987)$bsf +
+                      p_o/subset(data_south, year == 1987)$p_o * subset(data_south, year == 1987)$bso),
+           Paasche = (p_f/subset(data_south, year == 1987)$p_f * bsf +
+                    p_o/subset(data_south, year == 1987)$p_o * bso))
+
+
+## 2.c
+# Computing PPPs in the North
+PPPs_North <- data_north %>%
+  mutate(LPPP = (data_south$bsf * (p_f / data_south$p_f) +
+                 data_south$bso * (p_o / data_south$p_o)),
+         PPPP = (bsf * (p_f / data_south$p_f) 
+                 + bso * (p_o / data_south$p_o)),
+         Fisher_PPP = sqrt(LPPP * PPPP))
+
+# Computing PPPs in the South
+PPPs_South <- data_south %>%
+  mutate(LPPP = (bsf * (p_f / p_f) + bso * (p_o / p_o)),
+         PPPP = (bsf * (p_f / p_f) + bso * (p_o / p_o)),
+         Fisher_PPP = sqrt(LPPP * PPPP))
