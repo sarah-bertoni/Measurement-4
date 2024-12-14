@@ -1,83 +1,70 @@
-lorenz87 <- civ %>%
-  filter(year == 1987) %>%
-  group_by(year, north) %>%
-  arrange(conspc_87, .by_group = TRUE) %>%
+compute_lorenz <- function(data, group_vars) {
+  data %>%
+    filter(year %in% c(1987, 1998, 2008)) %>%
+    group_by(across(all_of(group_vars))) %>%
+    arrange(case_when(
+      year == 1987 ~ conspc_87,
+      year == 1998 ~ conspc_98,
+      year == 2008 ~ conspc_08
+    ), .by_group = TRUE) %>%
+    mutate(
+      cum_pop = cumsum(popwgt) / sum(popwgt),
+      cum_consump = case_when(
+        year == 1987 ~ cumsum(conspc_87 * popwgt) / sum(conspc_87 * popwgt),
+        year == 1998 ~ cumsum(conspc_98 * popwgt) / sum(conspc_98 * popwgt),
+        year == 2008 ~ cumsum(conspc_08 * popwgt) / sum(conspc_08 * popwgt)
+      ),
+      percentile = cut(cum_pop, breaks = seq(0, 1, by = 0.01), include.lowest = TRUE, labels = 1:100)  # Assign percentiles
+    ) %>%
+    group_by(across(all_of(c(group_vars, "percentile")))) %>%
+    summarise(
+      cum_consump_percentile = max(cum_consump, na.rm = TRUE), 
+      .groups = "drop"
+    )
+}
+
+find_crossings <- function(data) {
+  data %>%
+    pivot_wider(
+      names_from = year,
+      values_from = cum_consump_percentile,
+      names_prefix = "year_"
+    ) %>%
+    mutate(
+      Diff_87_98 = year_1987 - year_1998,
+      Diff_87_08 = year_1987 - year_2008,
+      Diff_98_08 = year_1998 - year_2008
+    ) %>%
+    summarise(
+      Crossings_87_98 = list(percentile[diff(sign(Diff_87_98)) != 0]),
+      Crossings_87_08 = list(percentile[diff(sign(Diff_87_08)) != 0]),
+      Crossings_98_08 = list(percentile[diff(sign(Diff_98_08)) != 0]),
+      .groups = "drop"
+    )
+}
+
+lorenz_region <- compute_lorenz(civ, c("year", "north"))
+lorenz_country <- compute_lorenz(civ, c("year"))
+
+
+crossings_north <- find_crossings(lorenz_region %>% filter(north == 1)) %>% mutate(Region = "North")
+crossings_south <- find_crossings(lorenz_region %>% filter(north == 0)) %>% mutate(Region = "South")
+crossings_country <- find_crossings(lorenz_country) %>% mutate(Region = "Country")
+
+
+crossings_total <- bind_rows(crossings_north, crossings_south, crossings_country) %>%
   mutate(
-    cum_pop = cumsum(popwgt) / sum(popwgt),
-    cum_consump = cumsum(conspc_87 * popwgt) / sum(conspc_87 * popwgt)) %>%
-  ungroup()
+    Crossings_87_98 = sapply(Crossings_87_98, function(x) ifelse(length(x) > 0, paste(x, collapse = ", "), "No Crossing")),
+    Crossings_87_08 = sapply(Crossings_87_08, function(x) ifelse(length(x) > 0, paste(x, collapse = ", "), "No Crossing")),
+    Crossings_98_08 = sapply(Crossings_98_08, function(x) ifelse(length(x) > 0, paste(x, collapse = ", "), "No Crossing"))
+  )
 
-lorenz98 <- civ %>%
-  filter(year == 1998) %>%
-  group_by(year, north) %>%
-  arrange(conspc_98, .by_group = TRUE) %>%
-  mutate(
-    cum_pop = cumsum(popwgt) / sum(popwgt),
-    cum_consump = cumsum(conspc_98 * popwgt) / sum(conspc_98 * popwgt)) %>%
-  ungroup()
+crossings_table <- hux(
+  crossings_total,
+  add_colnames = TRUE
+) %>%
+  set_bold(1, everywhere) %>%
+  set_caption("Crossing Percentiles for North, South, and Country") %>%
+  set_bottom_border(1, everywhere)
 
-lorenz08 <- civ %>%
-  filter(year == 2008) %>%
-  group_by(year, north) %>%
-  arrange(conspc_08, .by_group = TRUE) %>%
-  mutate(
-    cum_pop = cumsum(popwgt) / sum(popwgt),
-    cum_consump = cumsum(conspc_08 * popwgt) / sum(conspc_08 * popwgt)) %>%
-  ungroup()
-
-lorenz <- bind_rows(
-  lorenz87 %>% mutate(year = 1987),
-  lorenz98 %>% mutate(year = 1998),
-  lorenz08 %>% mutate(year = 2008)) %>% 
-  select(year, north, cum_pop, cum_consump)
-
-#lorenz south region all 3 years
-lorenz_south <- lorenz %>%
-  filter(north == 0)
-
-ggplot(lorenz_south, aes(x = cum_pop, y = cum_consump, color = as.factor(year))) +
-  geom_line() +
-  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "red") + 
-  labs(
-    title = "Lorenz Curves for the South",
-    x = "Cumulative Population Share",
-    y = "Cumulative Consumption Share",
-    color = "Year"
-  ) +
-  theme_minimal()
-
-#lorenz north region all 3 years
-lorenz_north <- lorenz %>%
-  filter(north == 1)
-
-ggplot(lorenz_north, aes(x = cum_pop, y = cum_consump, color = as.factor(year))) +
-  geom_line() +
-  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "red") + 
-  labs(
-    title = "Lorenz Curves for the North",
-    x = "Cumulative Population Share",
-    y = "Cumulative Consumption Share",
-    color = "Year"
-  ) +
-  theme_minimal()
-
-lorenztotal <- civ %>% 
-  group_by(year) %>% 
-  arrange(conspc, .by_group = TRUE) %>%
-  mutate(
-    cum_pop = cumsum(popwgt) / sum(popwgt),
-    cum_consump = cumsum(conspc * popwgt) / sum(conspc * popwgt)) %>%
-  ungroup()
-
-#lorenz for entire country
-ggplot(lorenztotal, aes(x = cum_pop, y = cum_consump, color = as.factor(year))) +
-  geom_line() +
-  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "red") + 
-  labs(
-    title = "Lorenz Curves for Entire Country",
-    x = "Cumulative Population Share",
-    y = "Cumulative Consumption Share",
-    color = "Year"
-  ) +
-  theme_minimal()
-
+crossings_table
