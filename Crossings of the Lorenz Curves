@@ -1,0 +1,193 @@
+## b
+Creation of percentiles for each region:
+```{r, include=TRUE, echo=FALSE}
+#Total
+cvn <- cvn %>%
+  mutate(conspc_87_2 = ifelse(year == "1987", conspc_87, NA_real_),
+         conspc_98 = ifelse(year == "1998", conspc_87, NA_real_),
+         conspc_08 = ifelse(year == "2008", conspc_87, NA_real_)
+         )
+
+percentiles <- seq(0.01, 1, by = 0.01)
+
+ewcdf_87 <- ewcdf(cvn$conspc_87_2, weights = cvn$weight.3)
+ewcdf_98 <- ewcdf(cvn$conspc_98, weights = cvn$weight.3)
+ewcdf_08 <- ewcdf(cvn$conspc_08, weights = cvn$weight.3)
+
+consperc_87 <- quantile(ewcdf_87, percentiles, na.rm = TRUE)
+consperc_98 <- quantile(ewcdf_98, percentiles, na.rm = TRUE)
+consperc_08 <- quantile(ewcdf_08, percentiles, na.rm = TRUE)
+
+#South
+cvn_South <- subset(cvn, cvn$north == 0)
+
+percentiles <- seq(0.01, 1, by = 0.01)
+
+ewcdf_87S <- ewcdf(cvn_South$conspc_87_2, weights = cvn_South$weight.3)
+ewcdf_98S <- ewcdf(cvn_South$conspc_98, weights = cvn_South$weight.3)
+ewcdf_08S <- ewcdf(cvn_South$conspc_08, weights = cvn_South$weight.3)
+
+consperc_87S <- quantile(ewcdf_87S, percentiles, na.rm = TRUE)
+consperc_98S <- quantile(ewcdf_98S, percentiles, na.rm = TRUE)
+consperc_08S <- quantile(ewcdf_08S, percentiles, na.rm = TRUE)
+
+#North
+cvn_Nord <- subset(cvn, cvn$north == 1)
+
+percentiles <- seq(0.01, 1, by = 0.01)
+
+ewcdf_87N <- ewcdf(cvn_Nord$conspc_87_2, weights = cvn_Nord$weight.3)
+ewcdf_98N <- ewcdf(cvn_Nord$conspc_98, weights = cvn_Nord$weight.3)
+ewcdf_08N <- ewcdf(cvn_Nord$conspc_08, weights = cvn_Nord$weight.3)
+
+consperc_87N <- quantile(ewcdf_87N, percentiles, na.rm = TRUE)
+consperc_98N <- quantile(ewcdf_98N, percentiles, na.rm = TRUE)
+consperc_08N <- quantile(ewcdf_08N, percentiles, na.rm = TRUE)
+
+```
+
+
+Graphing the differences in cummulative scores:
+(Note: For the function multiplot you need the package scater)
+
+For the Total
+```{r, include=TRUE, echo=FALSE}
+GP2_87 <- data.frame(consperc_87)
+GP2_872 <- GP2_87 %>% mutate(cumsum87 = cumsum(consperc_87), pop = (seq(1, 100, by = 1)/100)) %>% mutate(cumshare87 = cumsum87/max(cumsum87), year = 1987)
+
+GP2_98 <- data.frame(consperc_98)
+GP2_982 <- GP2_98 %>% mutate(cumsum98 = cumsum(consperc_98), pop = (seq(1, 100, by = 1)/100)) %>% mutate(cumshare98 = cumsum98/max(cumsum98), year = 1998)
+
+GP2_08 <- data.frame(consperc_08)
+GP2_082 <- GP2_08 %>% mutate(cumsum08 = cumsum(consperc_08), pop = (seq(1, 100, by = 1)/100)) %>% mutate(cumshare08 = cumsum08/max(cumsum08), year = 2008)
+
+GP22 <- merge(GP2_872, GP2_982, by = "pop")
+GP22 <- merge(GP22, GP2_082, by = "pop")
+
+GP22 <- GP22 %>% mutate(dif98.87 = (cumshare98 - cumshare87), dif08.87 = (cumshare08 - cumshare87), dif08.98 = (cumshare08 - cumshare98))
+
+
+ggp1T <- ggplot(GP22, aes(y = dif98.87, x = pop)) +
+  geom_line(size = 1)+
+  labs(
+    title = "Differences in cummulative shares between the Lorenz Curves of 1998 and 1987",
+    x = "Cumulative Population Share",
+    y = "Difference in curves"
+  ) +
+  theme_minimal()
+
+ggp2T <- ggplot(GP22, aes(y = dif08.87, x = pop)) +
+  geom_line(size = 1)+
+  labs(
+    title = "Differences in cummulative shares between the Lorenz Curves of 2008 and 1987",
+    x = "Cumulative Population Share",
+    y = "Difference in curves"
+  ) +
+  theme_minimal()
+
+ggp3T <- ggplot(GP22, aes(y = dif08.98, x = pop)) +
+  geom_line(size = 1)+
+  labs(
+    title = "Differences in cummulative shares between the Lorenz Curves of 2008 and 1998",
+    x = "Cumulative Population Share",
+    y = "Difference in curves"
+  ) +
+  theme_minimal()
+
+multiplot(ggp1T,ggp2T, ggp3T)
+
+```
+For the North
+```{r, include=TRUE, echo=FALSE}
+GP2_87N <- data.frame(consperc_87N)
+GP2_87N2 <- GP2_87N %>% mutate(cumsum87 = cumsum(consperc_87N), pop = (seq(1, 100, by = 1)/100)) %>% mutate(cumshare87 = cumsum87/max(cumsum87), year = 1987)
+
+GP2_98N <- data.frame(consperc_98N)
+GP2_98N2 <- GP2_98N %>% mutate(cumsum98 = cumsum(consperc_98N), pop = (seq(1, 100, by = 1)/100)) %>% mutate(cumshare98 = cumsum98/max(cumsum98), year = 1998)
+
+GP2_08N <- data.frame(consperc_08N)
+GP2_08N2 <- GP2_08N %>% mutate(cumsum08 = cumsum(consperc_08N), pop = (seq(1, 100, by = 1)/100)) %>% mutate(cumshare08 = cumsum08/max(cumsum08), year = 2008)
+
+GP2N2 <- merge(GP2_87N2, GP2_98N2, by = "pop")
+GP2N2 <- merge(GP2N2, GP2_08N2, by = "pop")
+
+GP2N2 <- GP2N2 %>% mutate(dif98.87 = (cumshare98 - cumshare87), dif08.87 = (cumshare08 - cumshare87), dif08.98 = (cumshare08 - cumshare98))
+
+
+ggp1N <- ggplot(GP2N2, aes(y = dif98.87, x = pop)) +
+  geom_line(size = 1)+
+  labs(
+    title = "Differences in cummulative shares between the Lorenz Curves of 1998 and 1987",
+    x = "Cumulative Population Share",
+    y = "Difference in curves"
+  ) +
+  theme_minimal()
+
+ggp2N <- ggplot(GP2N2, aes(y = dif08.87, x = pop)) +
+  geom_line(size = 1)+
+  labs(
+    title = "Differences in cummulative shares between the Lorenz Curves of 2008 and 1987",
+    x = "Cumulative Population Share",
+    y = "Difference in curves"
+  ) +
+  theme_minimal()
+
+ggp3N <- ggplot(GP2N2, aes(y = dif08.98, x = pop)) +
+  geom_line(size = 1)+
+  labs(
+    title = "Differences in cummulative shares between the Lorenz Curves of 2008 and 1998",
+    x = "Cumulative Population Share",
+    y = "Difference in curves"
+  ) +
+  theme_minimal()
+
+multiplot(ggp1N,ggp2N, ggp3N)
+
+```
+For the South
+```{r, include=TRUE, echo=FALSE}
+GP2_87S <- data.frame(consperc_87S)
+GP2_87S2 <- GP2_87S %>% mutate(cumsum87 = cumsum(consperc_87S), pop = (seq(1, 100, by = 1)/100)) %>% mutate(cumshare87 = cumsum87/max(cumsum87), year = 1987)
+
+GP2_98S <- data.frame(consperc_98S)
+GP2_98S2 <- GP2_98S %>% mutate(cumsum98 = cumsum(consperc_98S), pop = (seq(1, 100, by = 1)/100)) %>% mutate(cumshare98 = cumsum98/max(cumsum98), year = 1998)
+
+GP2_08S <- data.frame(consperc_08S)
+GP2_08S2 <- GP2_08S %>% mutate(cumsum08 = cumsum(consperc_08S), pop = (seq(1, 100, by = 1)/100)) %>% mutate(cumshare08 = cumsum08/max(cumsum08), year = 2008)
+
+GP2S2 <- merge(GP2_87S2, GP2_98S2, by = "pop")
+GP2S2 <- merge(GP2S2, GP2_08S2, by = "pop")
+
+GP2S2 <- GP2S2 %>% mutate(dif98.87 = (cumshare98 - cumshare87), dif08.87 = (cumshare08 - cumshare87), dif08.98 = (cumshare08 - cumshare98))
+
+
+ggp1 <- ggplot(GP2S2, aes(y = dif98.87, x = pop)) +
+  geom_line(size = 1)+
+  labs(
+    title = "Differences in cummulative shares between the Lorenz Curves of 1998 and 1987",
+    x = "Cumulative Population Share",
+    y = "Difference in curves"
+  ) +
+  theme_minimal()
+
+ggp2 <- ggplot(GP2S2, aes(y = dif08.87, x = pop)) +
+  geom_line(size = 1)+
+  labs(
+    title = "Differences in cummulative shares between the Lorenz Curves of 2008 and 1987",
+    x = "Cumulative Population Share",
+    y = "Difference in curves"
+  ) +
+  theme_minimal()
+
+ggp3 <- ggplot(GP2S2, aes(y = dif08.98, x = pop)) +
+  geom_line(size = 1)+
+  labs(
+    title = "Differences in cummulative shares between the Lorenz Curves of 2008 and 1998",
+    x = "Cumulative Population Share",
+    y = "Difference in curves"
+  ) +
+  theme_minimal()
+
+multiplot(ggp1,ggp2, ggp3)
+
+```
